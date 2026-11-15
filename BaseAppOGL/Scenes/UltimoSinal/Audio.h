@@ -10,6 +10,8 @@ inline constexpr float LensPulseSpacing = 1.05f;
 inline constexpr float LensLeadIn = .18f;
 inline constexpr float LensPlaybackDuration = 3.18f;
 
+inline constexpr int CaseClosedCue = 7;
+
 // Local PCM synthesis. Device ownership and mixing stay on a background thread.
 // Creating Audio is optional: a missing Windows audio device leaves the game usable.
 class Audio final {
@@ -34,7 +36,7 @@ public:
     // lowers ambience only; interaction and clue pulses retain their levels.
     void SetAtmosphere(int area, float focus);
     // 0: inspect; 1: switch; 2: receiver tuning; 3: door; 4: invalid; 5: local lens test;
-    // 6: distant thunder that follows a lightning strike (presentation only).
+    // 6: distant thunder; CaseClosedCue: Brumas acknowledges the finished case.
     // pan=-1 is left; pan=+1 is right. Cue never waits for the audio device.
     void Cue(int kind, float pan = 0.f);
     bool Available() const;

@@ -50,12 +50,12 @@ void UltimoSinal::PreviewTables(){
 
 bool UltimoSinal::RenderReview(){
     const auto oldInvestigation=investigation;const auto oldAtmosphere=atmosphere;const auto oldExperience=experience;const auto oldCamera=camera;const auto oldSettings=settings;
-    const auto oldAnswer=answer;const auto oldNotice=saveNotice;const auto oldDrama=drama;
+    const auto oldNotice=saveNotice;const auto oldDrama=drama;
     const bool oldBenchmark=benchmarkMode,oldHasSave=hasSave,oldWalking=walking;
     const float oldTime=worldTime,oldDoor=doorAmount,oldToast=toastTime;
     const int oldTarget=target,oldMenu=menuReturn,oldInspected=inspectedEvidence,oldPreview=previewEvidence;const float oldLensPlayback=lensPlaybackTime;const double oldDuration=duration;
     struct Restore{std::function<void()> run;~Restore(){run();}} restore{[&]{
-        investigation=oldInvestigation;atmosphere=oldAtmosphere;experience=oldExperience;camera=oldCamera;settings=oldSettings;answer=oldAnswer;drama=oldDrama;
+        investigation=oldInvestigation;atmosphere=oldAtmosphere;experience=oldExperience;camera=oldCamera;settings=oldSettings;drama=oldDrama;
         benchmarkMode=oldBenchmark;hasSave=oldHasSave;walking=oldWalking;worldTime=oldTime;
         doorAmount=oldDoor;toastTime=oldToast;target=oldTarget;duration=oldDuration;
         inspectedEvidence=oldInspected;previewEvidence=oldPreview;lensPlaybackTime=oldLensPlayback;menuReturn=oldMenu;saveNotice=oldNotice;captured=false;SyncCursor();
@@ -117,11 +117,29 @@ bool UltimoSinal::RenderReview(){
         ok=frame("04_options.bmp")&&ok;
         investigation.screen=ultimo::Screen::Reading;investigation.readingEntry=0;investigation.readingReturn=ultimo::Screen::Explore;
         ok=frame("05_diary.bmp")&&ok;
-        investigation.lensSolved=investigation.lensManual=true;investigation.lensLong.fill(true);investigation.screen=ultimo::Screen::Conclusion;investigation.hypothesis=1;
-        investigation.evidence[7]=true;investigation.evidence[8]=true;
-        const std::string argument="Brumas registrou a queda antes do comando manual. O registro e a fotografia relacionam os tres pulsos ao desembarque.";
-        answer.fill(0);argument.copy(answer.data(),answer.size()-1);investigation.justification=answer.data();
+        investigation.lensSolved=investigation.lensManual=true;
+        investigation.lensLong.fill(true);
+        investigation.screen=ultimo::Screen::Explore;
+        ok=investigation.BeginConclusion()&&ok;
         ok=frame("06_report.bmp")&&ok;
+        investigation.answers=ultimo::CorrectConclusionAnswers;
+        investigation.answers.front()=(investigation.answers.front()+1)%3;
+        ok=(!investigation.Submit()&&investigation.conclusionIncorrect)&&ok;
+        ok=frame("53_respostas_incorretas.bmp")&&ok;
+        investigation.answers=ultimo::CorrectConclusionAnswers;
+        ok=investigation.Submit()&&ok;
+        const auto playerPose=camera;
+        settings.reduceMotion=false;
+        experience.BeginEnding();
+        experience.endingTime=2.f;
+        ok=frame("55_relatorio_recebido.bmp")&&ok;
+        experience.endingTime=6.f;
+        ok=frame("56_transmissao_bruma.bmp")&&ok;
+        settings.reduceMotion=true;
+        ok=frame("57_encerramento_camera_fixa.bmp")&&ok;
+        experience.FinishEnding();
+        ok=frame("54_epilogo.bmp")&&ok;
+        ok=(camera.Position==playerPose.Position&&camera.Yaw==playerPose.Yaw&&camera.Pitch==playerPose.Pitch&&camera.Zoom==playerPose.Zoom)&&ok;
         if(mesa){
             investigation.screen=ultimo::Screen::Explore;target=-1;
             pose({1.55f,1.48f,-1.50f},-46,-12);

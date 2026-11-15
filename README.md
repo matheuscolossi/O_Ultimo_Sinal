@@ -1,14 +1,14 @@
 # O Último Sinal
 
-Jogo de investigação em C++/OpenGL para Projeto Integrador e Computação Gráfica. Revisão atual: **08/11/2026**. A base do professor e as cenas 0, 1, 5 e 6 foram preservadas; o jogo ocupa a cena 2.
+Jogo de investigação em C++/OpenGL para Projeto Integrador e Computação Gráfica. A base do professor e as cenas 0, 1, 5 e 6 foram preservadas; o jogo ocupa a cena 2.
 
 Abra **Jogar.cmd**, na raiz da pasta O Último Sinal. O Release instalado usa os modelos atualizados. O HUD mostra ETAPA 1/3 na sala de serviço, 2/3 no arquivo e 3/3 na sala óptica, acessível pela escada em espiral com 36 degraus. São três áreas conectadas no mesmo cenário.
 
 ![Revisão atual no jogo](docs/evidencias_2026-10-22/visao_geral.png)
 
-## Revisão de 12/11/2026 — aguardando compilação no Windows
+## Revisão de 12/11/2026
 
-Os fontes receberam pós-processamento HDR (oclusão de ambiente e bloom), clima de 05h40 mais escuro, movimento com aceleração, corrida com Shift, escada suavizada, clique para examinar, painel de técnicas em F3 e momentos de tempestade, energia, ensaio da lente e céu após o relatório. História, gabarito, modelos, bake e base do professor não mudaram. **Esta revisão foi verificada em um build de conferência para Linux, mas ainda não foi compilada no Visual Studio:** rode `Compilar.cmd` antes de jogar ou empacotar. Até lá, `Jogar.cmd` abre o executável de 08/11, que já lê os shaders novos (clima mais escuro), sem o restante. Detalhes, limites e como desfazer: [Melhorias de 12/11](docs/Melhorias_12-11-2026.md).
+Essa revisão introduziu pós-processamento HDR (oclusão de ambiente e bloom), clima de 05h40 mais escuro, movimento com aceleração, corrida com Shift, escada suavizada, clique para examinar e painel de técnicas em F3. Também acrescentou efeitos de tempestade, energia, ensaio da lente e amanhecer após a conclusão. O [registro da revisão](docs/Melhorias_12-11-2026.md) documenta essas mudanças.
 
 ![Antes e depois](docs/evidencias_2026-11-12/antes_depois.jpg)
 
@@ -22,7 +22,7 @@ A sala de serviço tem luz quente e apresenta a rotina interrompida; o arquivo u
 
 WASD: andar; Shift: correr; mouse: olhar; E ou clique esquerdo: examinar; J: caderno; Esc/Tab: pausa/voltar; F1: ajuda gradual; F2: opções; F3: painel de técnicas gráficas. No menu, Continuar preserva a investigação. Nova investigação pede confirmação quando há progresso.
 
-Investigue a morte de Augusto e explique por que o farol emitiu um sinal após a notícia da queda. Compare documentos, vestígios e horários; resolva energia, rádio e o ensaio local da lente no alto da torre. Fundamente uma hipótese com evidências e justificativa. A qualidade do texto final é avaliada por uma pessoa, sem correção por IA.
+Investigue a morte de Augusto e descubra por que o farol emitiu um sinal após a notícia da queda. Compare documentos, vestígios e horários e resolva os enigmas de energia, rádio e lente. Quando a reconstrução estiver disponível, responda às perguntas de múltipla escolha. Acerte todas para ver o epílogo. Se errar, volte ao caderno para revisar as pistas e tente novamente.
 
 O armário fica na sala de serviço. Recupere a energia para abri-lo e pegar a chave. Depois atravesse a porta do arquivo e use a escada. O caderno registra apenas o que foi descoberto. Quatro pistas oferecem inspeção 3D com rotação/inclinação/zoom. Volume, brilho, sensibilidade, inversão vertical, redução de movimentos e comandos estão nas opções.
 

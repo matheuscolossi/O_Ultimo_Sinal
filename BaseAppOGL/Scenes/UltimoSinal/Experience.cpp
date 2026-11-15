@@ -64,12 +64,27 @@ void UltimoSinal::UpdateExperience(float dt) {
   if(complete)FinishIntro();
   return;
  }
+ if(investigation.screen==Screen::Complete)experience.AdvanceEnding(dt);
  const bool explore=investigation.screen==Screen::Explore;
  const bool inLensRoom=explore&&camera.Position.z< -1.05f&&camera.Position.z> -5.6f&&std::abs(camera.Position.x)<4.6f;
  experience.Observe(investigation,inLensRoom);
  experience.Tick(dt,explore,settings.reduceMotion);
  atmosphere.Observe(investigation,camera.Position.x,camera.Position.y,camera.Position.z,explore);
  atmosphere.Tick(dt,explore,experience.activeEvent==ultimo::ExperienceEvent::None,settings.reduceMotion);
+}
+void UltimoSinal::RenderEndingWorld() {
+ const float progress=settings.reduceMotion?1.f:Ease(experience.endingTime/ultimo::EndingDuration);
+ const auto playerCamera=camera;
+ const float playerDawn=drama.dawn,playerStorm=drama.storm;
+ // Render the cut from the headland without moving the player's saved pose.
+ const auto position=glm::mix(glm::vec3(8.0f,3.1f,16.0f),glm::vec3(7.0f,3.5f,13.7f),progress);
+ camera=LookAt(position,{-3.3f,3.85f,-.9f},57.f);
+ drama.dawn=.20f+.80f*progress;
+ drama.storm=0.f;
+ RenderWorld();
+ drama.storm=playerStorm;
+ drama.dawn=playerDawn;
+ camera=playerCamera;
 }
 void UltimoSinal::DrawExperience(bool allowBenchmark) {
  if((benchmarkMode&&!allowBenchmark)||investigation.screen!=Screen::Explore)return;
@@ -90,7 +105,7 @@ void UltimoSinal::DrawExperience(bool allowBenchmark) {
  ImGui::TextColored(ImVec4(.80f,.65f,.39f,1),"ETAPA %d / 3 — %s",phase,ultimo::spatial::PhaseName(phase));
 
  if(titleAlpha>.01f){ImGui::SetWindowFontScale(1.25f);ImGui::TextWrapped("%s",phase==3&&!investigation.Ready()?"A máquina da luz":chapter.title);ImGui::SetWindowFontScale(1.f);ImGui::Spacing();}
- ImGui::TextWrapped("%s",investigation.submitted?"Seu relatório está preservado no caderno.":investigation.Ready()?"Confronte as evidências no caderno e prepare seu relatório.":phase==3?"Examine o comando óptico e confronte o ensaio com seus registros.":chapter.objective);
+ ImGui::TextWrapped("%s",investigation.submitted?"Caso encerrado. Consulte o desfecho pelo caderno.":investigation.Ready()?"Confira as evidências no caderno e pressione Enter para responder às perguntas finais.":phase==3?"Examine o comando óptico e confronte o ensaio com seus registros.":chapter.objective);
  ImGui::End();
  if(experience.activeEvent!=ultimo::ExperienceEvent::None) {
   const auto event=ultimo::DescribeEvent(experience.activeEvent);

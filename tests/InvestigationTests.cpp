@@ -5,6 +5,8 @@
 #include <queue>
 #include <set>
 #include <limits>
+#include <iomanip>
+#include <sstream>
 static int checks=0;void Check(bool ok,const char* s){++checks;if(!ok){std::cerr<<"FAIL "<<s<<std::endl;std::exit(1);}}
 using namespace ultimo;
 void Explore(Investigation& g){g.screen=Screen::Explore;}
@@ -17,7 +19,23 @@ bool CompletePath(Investigation g){
  if(!g.lensSolved){g.screen=Screen::LensConsole;g.lensManual=true;g.lensLong={true,true,true};if(!g.VerifyLens())return false;}
  return g.Ready();
 }
-std::string LegacyPayload(const Snapshot& s){auto text=Encode(s);return text.substr(0,text.rfind(" LENS1 "));}
+std::string LegacyPayload(const Snapshot& snapshot,int hypothesis=-1,bool includeLens=false){
+ const auto& game=snapshot.game;
+ std::ostringstream out;
+ out<<std::setprecision(12);
+ for(bool value:game.discovered)out<<value<<' ';
+ for(bool value:game.breakers)out<<value<<' ';
+ for(std::size_t i=0;i<EntryCount;++i)out<<(hypothesis>=0&&(i==7||i==8))<<' ';
+ out<<game.powerSolved<<' '<<game.radioSolved<<' '<<game.radioChannel<<' '<<hypothesis<<' '
+    <<game.helpStage<<' '<<snapshot.complete<<' '<<snapshot.x<<' '<<snapshot.y<<' '<<snapshot.z<<' '
+    <<snapshot.yaw<<' '<<snapshot.pitch<<' '<<snapshot.elapsed<<' '
+    <<std::quoted(hypothesis>=0?"Horários e o registro marcado \"LENS1\".":"");
+ if(includeLens){
+  out<<" LENS1 "<<game.lensSolved<<' '<<game.lensManual;
+  for(bool value:game.lensLong)out<<' '<<value;
+ }
+ return out.str();
+}
 void SelectLens(Investigation& g,int mask){g.lensManual=bool(mask&8);for(int i=0;i<3;++i)g.lensLong[i]=bool(mask&(1<<i));}
 int main(){
  Investigation g;Check(!g.Inspect(ClueId::Diary),"no collect title");g.Start();Check(!g.Inspect(ClueId::Count),"invalid classic ID");Check(!g.InspectEntry(10),"invalid entry");Check(!g.Inspect(ClueId::Key),"key locked unpowered");Check(!g.Inspect(ClueId::Photograph),"lens locked");Check(!g.BeginConclusion(),"no premature report");
@@ -44,37 +62,82 @@ int main(){
  }
  g.screen=Screen::LensConsole;SelectLens(g,15);g.helpStage=3;Check(g.VerifyLens(),"manual long sequence verified");Check(g.helpStage==0&&g.Ready(),"verified reconstruction enables report and resets hint");
  Check(!g.VerifyLens()&&g.lensSolved,"solved reconstruction is not repeated");
- Explore(g);g.ToggleJournal();g.ReadEntry(8);g.CloseReading();Check(g.screen==Screen::Journal,"reread returns journal");Explore(g);Check(g.BeginConclusion(),"report enabled");g.hypothesis=1;g.evidence[0]=g.evidence[7]=true;g.justification="  \n";Check(!g.Submit(),"blank blocked");g.justification="Queda às 23h10; comando manual às 23h17.";Check(g.Submit()&&g.Correct(),"report ending");
- // Consulting evidence after feedback must not enable rewriting the original report.
- const auto submittedHypothesis=g.hypothesis;const auto submittedEvidence=g.evidence;const auto submittedText=g.justification;
- g.screen=Screen::Journal;Check(g.ReadEntry(7),"submitted transcript remains readable");g.CloseReading();Check(g.screen==Screen::Journal,"submitted reading returns to journal");
- Explore(g);Check(!g.BeginConclusion(),"feedback cannot reopen report");Check(g.screen==Screen::Explore,"rejected reopening does not enter conclusion");
- g.screen=Screen::Conclusion;Check(!g.CanSubmit(),"submitted report cannot be submitted even if screen is forced");Check(!g.Submit(),"second submission rejected");
- Check(g.submitted&&g.hypothesis==submittedHypothesis&&g.evidence==submittedEvidence&&g.justification==submittedText,"consultation preserves original report");g.screen=Screen::Complete;
- Investigation fresh=g;fresh.Start();Check(!fresh.submitted&&fresh.hypothesis==-1&&fresh.justification.empty(),"new investigation explicitly clears frozen report");
- Snapshot snap;snap.game=g;snap.complete=true;snap.elapsed=531.4;Snapshot restored;auto encoded=Encode(snap);Check(Decode(encoded,restored),"save round trip");Check(restored.game.Correct()&&restored.game.submitted&&restored.elapsed==snap.elapsed,"ending preserved");
+ Explore(g);g.ToggleJournal();g.ReadEntry(8);g.CloseReading();Check(g.screen==Screen::Journal,"reread returns journal");
+ Explore(g);Check(g.BeginConclusion(),"questions enabled after investigation");
+ Check(g.answers==EmptyConclusionAnswers&&!g.CanSubmit()&&!g.Submit()&&!g.conclusionIncorrect,"unanswered questions cannot be submitted");
+ g.answers=CorrectConclusionAnswers;g.answers[1]=-1;
+ Check(!g.HasAllAnswers()&&!g.CanSubmit()&&!g.Submit(),"one missing answer blocks submission");
+ g.answers[1]=int(ConclusionQuestions[1].choices.size());
+ Check(!g.HasAllAnswers()&&!g.CanSubmit(),"out-of-range answer blocks submission");
+ std::size_t combinations=1;
+ for(const auto& question:ConclusionQuestions)combinations*=question.choices.size();
+ for(std::size_t combination=0;combination<combinations;++combination){
+  Investigation attempt=g;
+  std::size_t remaining=combination;
+  for(std::size_t question=0;question<attempt.answers.size();++question){
+   const auto choiceCount=ConclusionQuestions[question].choices.size();
+   attempt.answers[question]=int(remaining%choiceCount);
+   remaining/=choiceCount;
+  }
+  const bool allCorrect=attempt.answers==CorrectConclusionAnswers;
+  Check(attempt.HasAllAnswers()&&attempt.CanSubmit(),"complete answer combinations can be evaluated");
+  Check(attempt.Submit()==allCorrect,"only the correct combination completes the case");
+  Check(attempt.submitted==allCorrect&&attempt.screen==(allCorrect?Screen::Complete:Screen::Conclusion)
+        &&attempt.conclusionIncorrect!=allCorrect,"wrong answers prompt review without ending the investigation");
+ }
+ g.answers=CorrectConclusionAnswers;g.answers[1]=(g.answers[1]+1)%3;
+ Check(!g.Submit()&&g.conclusionIncorrect&&g.screen==Screen::Conclusion&&!g.submitted,"incorrect answer leaves quiz open for retry");
+ const auto attemptedAnswers=g.answers;
+ Snapshot unfinished;unfinished.game=g;Snapshot restored;
+ Check(Decode(Encode(unfinished),restored)&&!restored.complete&&!restored.game.submitted
+       &&restored.game.answers==attemptedAnswers&&restored.game.Ready(),"incorrect attempt preserves the unfinished save and clue access");
+ g.OpenJournal(Screen::Conclusion);
+ Check(g.ReadEntry(7),"transcript is readable after an unsuccessful attempt");g.CloseReading();
+ g.CloseJournal();
+ Check(g.screen==Screen::Conclusion&&g.answers==attemptedAnswers&&g.conclusionIncorrect,
+       "returning from evidence review restores the quiz and retains selected answers");
+ g.answers=CorrectConclusionAnswers;Check(g.Submit()&&g.AnswersCorrect()&&g.screen==Screen::Complete,"correct retry ends the case");
+ // Consulting evidence after closure must keep the solved case intact.
+ g.ToggleJournal();Check(g.ReadEntry(7),"submitted transcript remains readable");g.CloseReading();Check(g.screen==Screen::Journal,"submitted reading returns to journal");
+ g.CloseJournal();Check(g.screen==Screen::Complete,"closing the journal restores the completed case");
+ Explore(g);Check(!g.BeginConclusion()&&g.screen==Screen::Explore,"closed case cannot enter the quiz again");
+ g.screen=Screen::Conclusion;Check(!g.CanSubmit()&&!g.Submit(),"second submission rejected");
+ Check(g.submitted&&g.answers==CorrectConclusionAnswers,"consultation preserves the solved case");g.screen=Screen::Complete;
+ Investigation fresh=g;fresh.Start();Check(!fresh.submitted&&!fresh.conclusionIncorrect&&fresh.answers==EmptyConclusionAnswers,"new investigation clears the quiz");
+ Snapshot snap;snap.game=g;snap.complete=true;snap.elapsed=531.4;auto encoded=Encode(snap);Check(Decode(encoded,restored),"save round trip");
+ Check(restored.game.AnswersCorrect()&&restored.game.submitted&&restored.game.screen==Screen::Complete&&restored.elapsed==snap.elapsed,"ending preserved");
  Check(restored.game.lensSolved&&restored.game.lensManual&&std::all_of(restored.game.lensLong.begin(),restored.game.lensLong.end(),[](bool v){return v;}),"new solved diagnostic round trip");
  restored.game.screen=Screen::Explore;Check(!restored.game.BeginConclusion(),"loaded submitted report remains frozen");restored.game.screen=Screen::Conclusion;Check(!restored.game.Submit(),"loaded report cannot be resubmitted");
  Check(!Decode(encoded+" junk",restored),"trailing corruption rejected");Check(!Decode("garbage",restored),"invalid payload");snap.x=100;Check(!Decode(Encode(snap),restored),"unsafe position rejected");snap.x=0;snap.game.powerSolved=false;Check(!Decode(Encode(snap),restored),"inconsistent progress rejected");
- // Existing ULTIMO3 payloads remain loadable; only already submitted reports are grandfathered.
- snap.game=g;const auto legacyComplete=LegacyPayload(snap);
- Check(Decode(legacyComplete,restored),"legacy completed report migrates");
- Check(restored.game.submitted&&restored.game.lensSolved&&restored.game.lensManual&&restored.game.lensLong==std::array<bool,3>{true,true,true},"legacy completed report grandfathered");
- Check(restored.game.hypothesis==g.hypothesis&&restored.game.evidence==g.evidence&&restored.game.justification==g.justification,"migration preserves immutable report exactly");
+ snap.game=g;snap.game.answers[1]=(snap.game.answers[1]+1)%3;
+ Check(!Decode(Encode(snap),restored),"completed save requires all correct answers");
+ unfinished.game.answers[0]=int(ConclusionQuestions[0].choices.size());
+ Check(!Decode(Encode(unfinished),restored),"invalid saved answer rejected");
+ // Existing correct reports preserve closure. Older incorrect submissions can be retried.
+ snap.game=g;
+ for(bool includeLens:{false,true}){
+  Check(DecodeLegacy(LegacyPayload(snap,1,includeLens),restored),"legacy correctly completed report migrates");
+  Check(restored.complete&&restored.game.submitted&&restored.game.answers==CorrectConclusionAnswers
+        &&restored.game.lensSolved&&restored.game.lensManual&&restored.game.lensLong==std::array<bool,3>{true,true,true},"legacy correct ending and diagnostic preserved");
+  Check(DecodeLegacy(LegacyPayload(snap,2,includeLens),restored),"legacy wrong submission migrates");
+  Check(!restored.complete&&!restored.game.submitted&&restored.game.discovered==g.discovered&&restored.game.BeginConclusion(),"legacy incorrect outcome can be investigated again");
+ }
+ Check(DecodeLegacy(LegacyPayload(snap,1),restored),"legacy closure available again for resubmission check");
  restored.game.screen=Screen::Conclusion;Check(!restored.game.Submit(),"migrated submitted report cannot be rewritten");
- Snapshot oldPartial;oldPartial.game=g;oldPartial.game.submitted=false;oldPartial.complete=false;oldPartial.game.hypothesis=2;oldPartial.game.justification="Rascunho: \"LENS1\" e evidências ainda em análise.";
- Check(Decode(LegacyPayload(oldPartial),restored),"legacy complete observations but unfinished report migrates");
+ Snapshot oldPartial;oldPartial.game=g;oldPartial.game.submitted=false;oldPartial.game.answers=EmptyConclusionAnswers;
+ Check(DecodeLegacy(LegacyPayload(oldPartial,2),restored),"legacy complete observations but unfinished report migrates");
  Check(!restored.game.lensSolved&&!restored.game.lensManual&&restored.game.lensLong==std::array<bool,3>{false,false,false}&&!restored.game.Ready(),"legacy unfinished investigation requires new diagnostic");
- Check(restored.game.discovered==oldPartial.game.discovered&&restored.game.justification==oldPartial.game.justification&&restored.game.hypothesis==2,"legacy unfinished observations and report draft preserved");
- Snapshot early;early.game.Start();Read(early.game,2);Check(Decode(LegacyPayload(early),restored)&&restored.game.discovered[2]&&!restored.game.lensSolved,"early legacy progress migrates without fabricated records");
+ Check(restored.game.discovered==oldPartial.game.discovered&&restored.game.answers==EmptyConclusionAnswers,"legacy clues preserved and new questions begin unanswered");
+ Snapshot early;early.game.Start();Read(early.game,2);Check(DecodeLegacy(LegacyPayload(early),restored)&&restored.game.discovered[2]&&!restored.game.lensSolved,"early legacy progress migrates without fabricated records");
+ Snapshot partialQuiz=oldPartial;partialQuiz.game.answers[0]=CorrectConclusionAnswers[0];
+ Check(Decode(Encode(partialQuiz),restored)&&!restored.complete&&restored.game.answers==partialQuiz.game.answers,"partial quiz selection survives saving");
  // Every new control draft survives save/load, including incorrect trials.
  for(int mask=0;mask<16;++mask){Snapshot draft=oldPartial;draft.game.lensSolved=false;SelectLens(draft.game,mask);Check(Decode(Encode(draft),restored),"lens draft decodes");Check(restored.game.lensManual==draft.game.lensManual&&restored.game.lensLong==draft.game.lensLong&&!restored.game.lensSolved,"mode and all pulse draft controls preserved");}
  const auto legacyPrefix=LegacyPayload(oldPartial);
- for(const auto* extension:{" LENS2 0 0 0 0 0"," LENS1"," LENS1 0 1 1 1"," LENS1 0 1 1 1 1 0"," LENS1 0 2 1 1 1"," LENS1 0 1 1 -1 1"," LENS1 1 0 1 1 1"," LENS1 1 1 1 0 1"," LENS1 0 0 0 0 0 LENS1 0 0 0 0 0"})Check(!Decode(legacyPrefix+extension,restored),"unknown truncated trailing nonboolean or incoherent extension rejected");
+ for(const auto* extension:{" LENS2 0 0 0 0 0"," LENS1"," LENS1 0 1 1 1"," LENS1 0 1 1 1 1 0"," LENS1 0 2 1 1 1"," LENS1 0 1 1 -1 1"," LENS1 1 0 1 1 1"," LENS1 1 1 1 0 1"," LENS1 0 0 0 0 0 LENS1 0 0 0 0 0"})Check(!DecodeLegacy(legacyPrefix+extension,restored),"unknown truncated trailing nonboolean or incoherent legacy extension rejected");
  for(int missing:{3,4,7,8}){Snapshot inconsistent=oldPartial;inconsistent.game.lensSolved=true;SelectLens(inconsistent.game,15);inconsistent.game.discovered[missing]=false;Check(!Decode(Encode(inconsistent),restored),"solved save requires observed sources and access");}
  Snapshot inconsistent=oldPartial;inconsistent.game.lensSolved=true;SelectLens(inconsistent.game,15);inconsistent.game.radioSolved=false;Check(!Decode(Encode(inconsistent),restored),"solved save requires real radio state");
  inconsistent=oldPartial;inconsistent.complete=true;inconsistent.game.lensSolved=false;SelectLens(inconsistent.game,15);Check(!Decode(Encode(inconsistent),restored),"new completed save cannot bypass diagnostic");
- Investigation human=g;human.submitted=false;human.screen=Screen::Conclusion;human.hypothesis=2;human.justification="Uma interpretação alternativa para discussão com o professor.";Check(human.Submit()&&!human.Correct(),"human written conclusion is not autograded or blocked by chosen hypothesis");
  // Exhaust reachable observations, mechanisms and local-console drafts in every order.
  std::queue<Investigation> queue;std::set<unsigned long> seen;Investigation initial;initial.Start();queue.push(initial);int states=0;
  while(!queue.empty()){

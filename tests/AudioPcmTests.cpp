@@ -42,7 +42,7 @@ int main() {
     Check(ultimo::DistanceGain(std::numeric_limits<float>::quiet_NaN()) == 0.f, "invalid distance is silent");
     Check(ultimo::Pan(std::numeric_limits<float>::infinity()) == 0.f && ultimo::Pan(8.f) == 1.f, "invalid/bounded pan");
     std::uint32_t random = 12345u;
-    for (int kind : { 0, 1, 2, 3, 4, 5, 6, 10, 11 }) {
+    for (int kind : { 0, 1, 2, 3, 4, 5, 6, ultimo::CaseClosedCue, 10, 11 }) {
         ultimo::Voice voice;
         voice.active = true; voice.kind = kind; voice.length = ultimo::CueLength(kind);
         int samples = 0; float peak = 0.f; bool finite = true;

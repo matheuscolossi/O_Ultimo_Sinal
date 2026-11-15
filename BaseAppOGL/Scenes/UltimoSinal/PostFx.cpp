@@ -256,7 +256,8 @@ void UltimoSinal::RenderWorld(){
 
 void UltimoSinal::UpdateViewFeel(float dt){
  const auto area=ultimo::AreaAt(camera.Position.x,camera.Position.y,camera.Position.z);
- const Grade grade=GradeFor(IsMenuBackdrop()||investigation.screen==Screen::Intro?ultimo::AcousticArea::Coast:area);
+ const bool coastalView=IsMenuBackdrop()||investigation.screen==Screen::Intro||investigation.screen==Screen::Complete;
+ const Grade grade=GradeFor(coastalView?ultimo::AcousticArea::Coast:area);
  const bool exploring=investigation.screen==Screen::Explore&&!experience.menuCameraHeld;
  const float focusTarget=exploring&&target>=0&&target<int(interactionPositions.size())?1.f:0.f;
  if(focusTarget>0)focusPosition=interactionPositions[target];

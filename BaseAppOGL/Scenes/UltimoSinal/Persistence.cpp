@@ -15,13 +15,13 @@ bool Atomic(const std::filesystem::path& path,const std::string& text){
 void UltimoSinal::Save(){
  if(experience.menuCameraHeld||experience.introPending||benchmarkMode||!sessionActive||investigation.screen==ultimo::Screen::Title||investigation.screen==ultimo::Screen::ConfirmNew)return;
  try{ultimo::Snapshot state;state.game=investigation;state.x=camera.Position.x;state.y=camera.Position.y;state.z=camera.Position.z;state.yaw=camera.Yaw;state.pitch=camera.Pitch;state.elapsed=duration;state.complete=investigation.submitted;
- auto payload=ultimo::Encode(state);ultimo::Snapshot validated;if(!ultimo::Decode(payload,validated)){saveNotice="O estado atual não pôde ser salvo; o arquivo anterior foi preservado.";return;}if(Atomic(UserFolder()/L"progress.v3","ULTIMO3 "+std::to_string(ultimo::Fingerprint(payload))+"\n"+payload)){hasSave=true;saveNotice="Progresso salvo neste computador.";}else saveNotice="Não foi possível salvar. O arquivo anterior foi preservado.";
+ auto payload=ultimo::Encode(state);ultimo::Snapshot validated;if(!ultimo::Decode(payload,validated)){saveNotice="O estado atual não pôde ser salvo; o arquivo anterior foi preservado.";return;}if(Atomic(UserFolder()/L"progress.v3","ULTIMO4 "+std::to_string(ultimo::Fingerprint(payload))+"\n"+payload)){hasSave=true;saveNotice="Progresso salvo neste computador.";}else saveNotice="Não foi possível salvar. O arquivo anterior foi preservado.";
  }catch(...){saveNotice="Pasta de salvamento indisponível; a sessão continua em memória.";}
 }
 bool UltimoSinal::Load(){
  try{ultimo::Snapshot state;if(!ultimo::ReadSave(UserFolder()/L"progress.v3",state)){saveNotice="O progresso não pôde ser lido ou pertence a outra versão. Ele foi preservado.";return false;}
  investigation=state.game;sessionActive=true;duration=state.elapsed;camera=CCamera({state.x,state.y,state.z},{0,1,0},state.yaw,state.pitch);camera.Zoom=58;
- inspectedEvidence=previewEvidence=-1;lensPlaybackTime=-1;answer.fill(0);std::copy(investigation.justification.begin(),investigation.justification.end(),answer.begin());target=-1;skipMouse=true;doorAmount=investigation.DoorOpen()?1.f:0.f;
+ inspectedEvidence=previewEvidence=-1;lensPlaybackTime=-1;target=-1;skipMouse=true;doorAmount=investigation.DoorOpen()?1.f:0.f;
  if(Blocked(camera.Position)||!ultimo::spatial::ValidPose(camera.Position.x,camera.Position.y,camera.Position.z)){camera.Position={0,1.7f,4};saveNotice="Progresso recuperado; posição ajustada para passagem segura.";}else saveNotice="Progresso recuperado.";
  ResetExperience(true);SyncCursor();return true;
  }catch(...){saveNotice="Falha ao ler o progresso; tente iniciar uma nova investigação.";return false;}

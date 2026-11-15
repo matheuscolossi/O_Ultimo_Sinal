@@ -53,7 +53,7 @@ void UltimoSinal::LoadDesk(){
 UltimoSinal::~UltimoSinal(){Save();SaveSettings();ReleasePost(false);if(evidenceDepth)glDeleteRenderbuffers(1,&evidenceDepth);if(evidenceTexture)glDeleteTextures(1,&evidenceTexture);if(evidenceFbo)glDeleteFramebuffers(1,&evidenceFbo);cube.cleanup();cylinder.cleanup();cone.cleanup();waterPlane.cleanup();}
 void UltimoSinal::Start(){
  experience=ultimo::Experience{};inspectedEvidence=previewEvidence=-1;lensPlaybackTime=-1;
- investigation.Start();sessionActive=true;camera=CCamera({0,1.7f,17});camera.Zoom=58;answer.fill(0);target=-1;duration=0;worldTime=0;doorAmount=0;autosave=0;skipMouse=true;Save();ResetExperience(false);if(experience.introPending)investigation.screen=Screen::Intro;SyncCursor();
+ investigation.Start();sessionActive=true;camera=CCamera({0,1.7f,17});camera.Zoom=58;target=-1;duration=0;worldTime=0;doorAmount=0;autosave=0;skipMouse=true;Save();ResetExperience(false);if(experience.introPending)investigation.screen=Screen::Intro;SyncCursor();
 }
 void UltimoSinal::SyncCursor(){bool desired=investigation.screen==Screen::Explore&&!benchmarkMode&&!techniquePanel;if(captured!=desired){captured=desired;skipMouse=true;InputManager::GetInstance().SetCursorMode(captured?GLFW_CURSOR_DISABLED:GLFW_CURSOR_NORMAL);}}
 bool UltimoSinal::Blocked(glm::vec3 p)const{
@@ -114,16 +114,17 @@ void UltimoSinal::ProcessSceneInput(GLFWwindow* window,float deltaTime){
    if(duplicate)saveNotice="Essa tecla já tem uma ação. Escolha outra.";else{*keys[remapping]=k;remapping=-1;SaveSettings();saveNotice="Controle atualizado.";}return;
   }return;
  }
- if(ImGui::GetIO().WantTextInput){if(investigation.screen==Screen::Conclusion){autosave+=(std::max)(0.f,deltaTime);if(autosave>5){autosave=0;Save();}}return;}
+ if(ImGui::GetIO().WantTextInput)return;
  // Classroom aid: compare each graphics technique live. Cursor is released.
  if(in.IsKeyJustPressed(GLFW_KEY_F3)){techniquePanel=!techniquePanel;SyncCursor();}
  auto before=investigation.screen;
  if(before==Screen::Title){if(in.IsKeyJustPressed(GLFW_KEY_ENTER)&&!ImGui::GetIO().NavVisible){if(sessionActive){if(experience.introPending)FinishIntro();else{RestorePlayerCamera();investigation.screen=investigation.submitted?Screen::Complete:Screen::Explore;}}else if(hasSave)Load();else Start();}return;}
  if(before!=Screen::Help&&before!=Screen::Options&&before!=Screen::Controls&&before!=Screen::ConfirmNew&&in.IsKeyJustPressed(GLFW_KEY_F1)){menuReturn=int(before);investigation.screen=Screen::Help;SyncCursor();return;}
  if(before!=Screen::Help&&before!=Screen::Options&&before!=Screen::Controls&&before!=Screen::ConfirmNew&&in.IsKeyJustPressed(GLFW_KEY_F2)){menuReturn=int(before);investigation.screen=Screen::Options;SyncCursor();return;}
- if(in.IsKeyJustPressed(GLFW_KEY_ESCAPE)||in.IsKeyJustPressed(GLFW_KEY_TAB)){
+ if(in.IsKeyJustPressed(GLFW_KEY_ESCAPE)||(before!=Screen::Conclusion&&in.IsKeyJustPressed(GLFW_KEY_TAB))){
   if(before==Screen::Reading){inspectedEvidence=-1;investigation.CloseReading();}
-  else if(before==Screen::Journal||before==Screen::Panel||before==Screen::Radio||before==Screen::LensConsole||before==Screen::Conclusion)investigation.screen=Screen::Explore;
+  else if(before==Screen::Journal)investigation.CloseJournal();
+  else if(before==Screen::Panel||before==Screen::Radio||before==Screen::LensConsole||before==Screen::Conclusion)investigation.screen=Screen::Explore;
   else if(before==Screen::Options||before==Screen::Help||before==Screen::Controls||before==Screen::ConfirmNew){investigation.screen=Screen(menuReturn);SaveSettings();}
   else investigation.TogglePause();Save();SyncCursor();return;
  }
@@ -200,6 +201,8 @@ void UltimoSinal::DrawScene(float dt){
  const auto acousticArea=ultimo::AreaAt(camera.Position.x,camera.Position.y,camera.Position.z);
  audio.SetAtmosphere(static_cast<int>(acousticArea),atmosphere.quiet);
  bool inside=acousticArea!=ultimo::AcousticArea::Coast;audio.Update(dt,inside,walking&&investigation.screen==Screen::Explore,settings.master,settings.ambient,settings.effects);
- glClearColor(.13f,.18f,.20f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);RenderWorld();DrawInterface();DrawExperience();
+ glClearColor(.13f,.18f,.20f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+ if(investigation.screen==Screen::Complete)RenderEndingWorld();else RenderWorld();
+ DrawInterface();DrawExperience();
  if(techniquePanel&&!benchmarkMode)DrawTechniquePanel();
 }

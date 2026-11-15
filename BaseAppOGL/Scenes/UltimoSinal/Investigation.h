@@ -2,19 +2,20 @@
 #include "Narrative.h"
 #include <algorithm>
 #include <string>
-#include <cctype>
 namespace ultimo {
 enum class Screen{Title,Explore,Reading,Journal,Pause,Conclusion,Complete,Panel,Radio,Help,Options,ConfirmNew,Controls,Intro,LensConsole};
 class Investigation{
 public:
  Screen screen=Screen::Title,readingReturn=Screen::Explore,pauseReturn=Screen::Explore;
- ClueId reading=ClueId::Diary;int readingEntry=0,hypothesis=-1,radioChannel=16,helpStage=0;
- std::array<bool,EntryCount> discovered{},evidence{};
+ Screen journalReturn=Screen::Explore;
+ ClueId reading=ClueId::Diary;int readingEntry=0,radioChannel=16,helpStage=0;
+ std::array<bool,EntryCount> discovered{};
+ ConclusionAnswers answers=EmptyConclusionAnswers;
  std::array<bool,3> breakers{{true,false,false}};
- bool powerSolved=false,radioSolved=false,submitted=false;
+ bool powerSolved=false,radioSolved=false,submitted=false,conclusionIncorrect=false;
  std::array<bool,3> lensLong{{false,false,false}};
  bool lensSolved=false,lensManual=false;
- std::string justification,notice;
+ std::string notice;
  void Start(){*this=Investigation{};screen=Screen::Explore;}
  std::size_t Count()const{return std::count(discovered.begin(),discovered.begin()+5,true);}
  bool Found(ClueId id)const{auto i=std::size_t(id);return i<5&&discovered[i];}
@@ -32,7 +33,12 @@ public:
  bool ReadEntry(int id){if(screen!=Screen::Journal||id<0||id>=int(EntryCount)||!discovered[id])return false;readingEntry=id;readingReturn=Screen::Journal;screen=Screen::Reading;return true;}
  bool ReadAgain(ClueId id){return ReadEntry(int(id));}
  void CloseReading(){if(screen==Screen::Reading)screen=readingReturn;}
- void ToggleJournal(){if(screen==Screen::Explore)screen=Screen::Journal;else if(screen==Screen::Journal)screen=Screen::Explore;}
+ void OpenJournal(Screen returnTo=Screen::Explore){journalReturn=returnTo;screen=Screen::Journal;}
+ void CloseJournal(){if(screen==Screen::Journal)screen=journalReturn;}
+ void ToggleJournal(){
+  if(screen==Screen::Journal)CloseJournal();
+  else if(screen==Screen::Explore||screen==Screen::Conclusion||screen==Screen::Complete)OpenJournal(screen);
+ }
  void TogglePause(){if(screen==Screen::Pause)screen=pauseReturn;else if(screen!=Screen::Title&&screen!=Screen::Complete&&screen!=Screen::ConfirmNew&&screen!=Screen::Options){pauseReturn=screen;screen=Screen::Pause;}}
  bool RestorePower(){
   if(screen!=Screen::Panel||!discovered[5]||!discovered[2]){notice="Faltam dados: consulte a manutenção e examine o acesso ao cais.";return false;}
@@ -57,10 +63,33 @@ public:
   }
   lensSolved=true;helpStage=0;notice="Reconstrução local conferida: modo manual e três pulsos longos. Nenhum sinal foi transmitido.";return true;
  }
- bool BeginConclusion(){if(submitted){notice="O relatório já foi transmitido. Seus registros continuam disponíveis para consulta.";return false;}if(screen!=Screen::Explore||!Ready()){notice="Seu relatório ainda precisa explicar o horário, o modo de operação e o significado dos pulsos.";return false;}screen=Screen::Conclusion;return true;}
- bool CanSubmit()const{return !submitted&&screen==Screen::Conclusion&&Ready()&&hypothesis>=0&&hypothesis<3&&std::count(evidence.begin(),evidence.end(),true)>=2&&std::any_of(justification.begin(),justification.end(),[](unsigned char c){return !std::isspace(c);});}
- bool Submit(){if(!CanSubmit())return false;submitted=true;screen=Screen::Complete;return true;}
- bool Correct()const{return screen==Screen::Complete&&hypothesis==1;}
+ bool BeginConclusion(){
+  if(submitted){notice="O caso foi encerrado. Consulte o desfecho pelo caderno.";return false;}
+  if(screen!=Screen::Explore||!Ready()){
+   notice="Reúna as pistas e confira a reconstrução da lente antes de responder.";
+   return false;
+  }
+  screen=Screen::Conclusion;
+  notice.clear();
+  return true;
+ }
+ bool HasAllAnswers()const{
+  for(std::size_t i=0;i<answers.size();++i){
+   if(answers[i]<0||std::size_t(answers[i])>=ConclusionQuestions[i].choices.size())return false;
+  }
+  return true;
+ }
+ bool AnswersCorrect()const{return answers==CorrectConclusionAnswers;}
+ bool CanSubmit()const{return !submitted&&screen==Screen::Conclusion&&Ready()&&HasAllAnswers();}
+ bool Submit(){
+  if(!CanSubmit())return false;
+  conclusionIncorrect=!AnswersCorrect();
+  if(conclusionIncorrect)return false;
+  submitted=true;
+  screen=Screen::Complete;
+  return true;
+ }
+ bool Correct()const{return submitted&&AnswersCorrect();}
  const char* Question()const{
   if(!powerSolved)return "Por que o farol ainda transmitiu depois da chamada de emergência?";
   if(!radioSolved)return "Que horário Brumas registrou — e em qual canal?";
@@ -79,7 +108,7 @@ public:
    if(helpStage==2)return "O temporizador estava avariado. O registro mostra outro modo de operação, e o verso da fotografia descreve a duração dos pulsos.";
    return "Leia o registro e a fotografia. No console da lente, selecione MANUAL e três pulsos LONGOS; depois confira a reconstrução. É um teste local, sem transmissão.";
   }
-  return "Relacione: queda às 23h10; comando manual às 23h17; significado dos pulsos na fotografia. Complete as evidências e apresente seu relatório.";
+  return "Compare o alicate com o cabo, a transmissão com o registro mecânico e leia o verso da fotografia. Depois responda às perguntas do caso.";
  }
 };
 }

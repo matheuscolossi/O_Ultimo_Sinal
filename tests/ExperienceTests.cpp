@@ -82,13 +82,27 @@ int main() {
  Check(!game.VerifyLens()&&!game.Ready()&&ChapterFor(game)==Chapter::LensRoom,"an inconsistent reconstruction does not advance the chapter");
  game.lensLong={true,true,true};Check(game.VerifyLens(),"legal local lens reconstruction resolves before report");state.Observe(game,true);
  Check(game.Ready()&&state.chapter==Chapter::Reconstruction,"report chapter requires original prerequisites and verified local reconstruction");
- game.screen=Screen::Conclusion;game.hypothesis=1;game.evidence[7]=game.evidence[8]=true;game.justification="Horários e comando manual confrontados com os registros.";
- Check(game.Submit(),"legal report submits");state.Observe(game,true);
- Check(state.chapter==Chapter::Closed,"submitted report derives epilogue");
+ game.screen=Screen::Explore;Check(game.BeginConclusion(),"the verified reconstruction opens the questions");
+ game.answers=CorrectConclusionAnswers;game.answers[0]=(game.answers[0]+1)%3;
+ Check(!game.Submit()&&game.conclusionIncorrect,"an incorrect answer requires another attempt");state.Observe(game,true);
+ Check(state.chapter==Chapter::Reconstruction,"an incorrect attempt does not start the epilogue");
+ game.answers=CorrectConclusionAnswers;
+ Check(game.Submit(),"correct answers close the case");state.Observe(game,true);
+ Check(state.chapter==Chapter::Closed,"a solved case derives the epilogue");
+ Check(!state.EndingPlaying(),"the cinematic begins only when the report is submitted on screen or it is replayed");
+ state.BeginEnding();
+ state.AdvanceEnding(.1f);
+ Check(state.EndingPlaying()&&state.endingTime>0.f,"the ending cinematic plays on a bounded clock");
+ state.FinishEnding();
+ Check(!state.EndingPlaying(),"skipping opens the epilogue immediately");
+ state.BeginEnding();
+ for(int i=0;i<100;++i)state.AdvanceEnding(.1f);
+ Check(state.endingTime==EndingDuration,"playback stops at the epilogue");
 
  Experience resumed;resumed.Reset(game,true);resumed.Observe(game,true);resumed.Tick(.1f,true,false);
  Check(resumed.chapter==Chapter::Closed&&resumed.resumed&&game.lensSolved,"resume derives chapter from existing save data without losing verified reconstruction");
  Check(!resumed.introPending&&resumed.cabinetAmount==1,"resume keeps powered cabinet open and skips opening cinematic");
+ Check(!resumed.EndingPlaying(),"a resumed case opens its epilogue without replaying the ending");
  Check(resumed.activeEvent==ExperienceEvent::None&&resumed.PendingEvents()==0&&resumed.powerAge<0,"resume replays no discoveries or power flashes");
 
  Investigation fresh;fresh.Start();Experience reduced;reduced.Reset(fresh,false);

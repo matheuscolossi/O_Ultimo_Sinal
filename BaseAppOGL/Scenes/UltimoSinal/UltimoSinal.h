@@ -35,7 +35,7 @@ private:
  float gradeSaturation=1,focusFade=0,smoothEyeY=1.7f,renderLift=0,renderZoom=0,bobPhase=0,bobAmount=0;
  bool postEnabled=true,aoEnabled=true,bloomEnabled=true,techniquePanel=false,mouseHeld=false,sprinting=false;
  ultimo::AtmosphereMoment beatMoment=ultimo::AtmosphereMoment::None;
- void RenderWorld();bool BeginPost();void EndPost();bool PreparePost(int,int);void ReleasePost(bool keepProgram);
+ void RenderWorld();void RenderEndingWorld();bool BeginPost();void EndPost();bool PreparePost(int,int);void ReleasePost(bool keepProgram);
  void UpdateViewFeel(float);void DrawTechniquePanel();
  struct Block{ultimo::Bounds bounds;glm::vec3 color;bool solid;};
  struct DeskInstance{glm::mat4 model{1.f};ultimo::Bounds bounds;};
@@ -58,7 +58,7 @@ private:
  GLuint evidenceFbo=0,evidenceTexture=0,evidenceDepth=0;
  float evidenceYaw=0,evidencePitch=0,evidenceZoom=1,lensPlaybackTime=-1;
  bool RenderEvidencePreview(int);void DrawEvidencePreview(int);void StartLensPlayback();
- std::array<char,2048> answer{};std::string saveNotice;
+ std::string saveNotice;
  void Start();void SyncCursor();void Walk(glm::vec3,float,float speed=2.6f);bool Blocked(glm::vec3)const;bool Visible(glm::vec3)const;void FindTarget();
  void Interact();void Save();bool Load();void DeleteSave();void LoadSettings();void SaveSettings();
  void LoadDesk();void LoadWorldAssets();void BuildWorld();void Render(CPrimitives&,glm::vec3,glm::vec3,glm::vec3,int material=0,float alpha=1);

@@ -48,8 +48,8 @@ float DistanceGain(float distance) {
 }
 
 float CueLength(int kind) {
-    constexpr float lengths[] = { .18f, .55f, .86f, .64f, .28f, LensPlaybackDuration, 3.2f };
-    if (kind >= 0 && kind <= 6) return lengths[kind];
+    constexpr float lengths[] = { .18f, .55f, .86f, .64f, .28f, LensPlaybackDuration, 3.2f, 2.85f };
+    if (kind >= 0 && kind <= CaseClosedCue) return lengths[kind];
     return kind == 10 ? .20f : (kind == 11 ? 1.10f : 0.f);
 }
 
@@ -128,6 +128,18 @@ float VoiceSample(Voice& voice, std::uint32_t& random) {
         const float open = 1.f - .55f * Unit(voice.surface);
         sample = .075f * voice.noiseLow * std::exp(-7.f * t) * open
             + .86f * voice.rumble * roll * std::exp(-1.15f * t) * (.70f + .30f * open);
+        break;
+    }
+    case CaseClosedCue: { // A brief receiver hiss resolves into a soft sustained chord.
+        constexpr float lowerDelay = .15f, upperDelay = .60f;
+        const float lower = t - lowerDelay;
+        const float upper = t - upperDelay;
+        const float lowerSwell = std::sin(Pi * Unit(lower / (voice.length - lowerDelay)));
+        const float upperSwell = std::sin(Pi * Unit(upper / (voice.length - upperDelay)));
+        sample = .11f * voice.noiseLow * std::exp(-19.f * t)
+            + .086f * std::sin(2.f * Pi * 146.83f * lower) * lowerSwell
+            + (.047f * std::sin(2.f * Pi * 220.f * upper)
+                + .016f * std::sin(2.f * Pi * 293.66f * upper)) * upperSwell;
         break;
     }
     case 10: { // Stone/gravel outside, a softer wooden impact inside.
@@ -472,7 +484,7 @@ void Audio::SetAtmosphere(int area, float focus) {
 }
 
 void Audio::Cue(int kind, float pan) {
-    if (kind < 0 || kind > 6 || impl->master.load(std::memory_order_relaxed) == 0.f
+    if (kind < 0 || kind > CaseClosedCue || impl->master.load(std::memory_order_relaxed) == 0.f
         || impl->effects.load(std::memory_order_relaxed) == 0.f) return;
     std::lock_guard<std::mutex> guard(impl->queueMutex);
     if (impl->commandCount < impl->commands.size())

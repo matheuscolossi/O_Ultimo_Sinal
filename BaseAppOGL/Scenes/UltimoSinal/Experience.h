@@ -7,6 +7,7 @@
 
 namespace ultimo {
 inline constexpr float IntroDuration=13.f;
+inline constexpr float EndingDuration=8.f;
 inline constexpr float ChapterCardDuration=5.5f;
 inline constexpr float ExperienceEventDuration=5.f;
 
@@ -17,7 +18,7 @@ inline constexpr std::array<ChapterInfo,5> Chapters{{
  {"CAPÍTULO 02", "Vozes na estática", "Procure registros da noite e descubra o que o rádio ainda pode revelar.",2},
  {"CAPÍTULO 03", "O arquivo do farol", "Confronte os registros e depois suba à sala óptica pela escada em espiral.",3},
  {"CAPÍTULO 04", "Reconstrução", "Relacione os horários, o funcionamento da luz e o significado do sinal no caderno.",4},
- {"EPÍLOGO", "O relatório", "Seu relatório foi transmitido. Os registros permanecem disponíveis para consulta.",5}
+ {"EPÍLOGO", "O último sinal", "O caso foi encerrado. O caderno preserva os registros da investigação.",5}
 }};
 inline Chapter ChapterFor(const Investigation& game) {
  if(game.submitted)return Chapter::Closed;
@@ -47,6 +48,7 @@ struct ExperiencePose { float x=0,y=1.7f,z=17,yaw=-90,pitch=0,zoom=58; };
 struct Experience {
  Chapter chapter=Chapter::Arrival;
  float chapterAge=ChapterCardDuration,menuTime=0,introTime=0;
+ float endingTime=EndingDuration;
  float cabinetAmount=0,powerAge=-1,powerPulse=0,eventAge=0;
  bool resumed=false,introPending=false,menuCameraHeld=false;
  ExperiencePose heldPlayerPose{};
@@ -67,6 +69,10 @@ struct Experience {
   return introTime>=IntroDuration;
  }
  void CompleteIntro(){introPending=false;introTime=IntroDuration;resumed=false;chapterAge=0;}
+ void BeginEnding(){endingTime=0.f;}
+ bool EndingPlaying()const{return endingTime<EndingDuration;}
+ void AdvanceEnding(float dt){endingTime=(std::min)(EndingDuration,endingTime+SafeDelta(dt));}
+ void FinishEnding(){endingTime=EndingDuration;}
  void AdvanceMenu(float dt,bool active) {if(active)menuTime+=SafeDelta(dt);}
  float VisualTime(float worldTime)const{return menuCameraHeld?menuTime:worldTime;}
 

@@ -135,6 +135,6 @@ int main(){
   check(std::isfinite(d.storm)&&std::isfinite(d.untilStrike)&&std::isfinite(d.lensFlash)&&std::isfinite(d.dawn)&&d.untilStrike>7.f,"invalid or huge frame times are clamped");
  }
  Investigation untouched;untouched.Start();
- check(game.discovered==untouched.discovered&&game.powerSolved==untouched.powerSolved&&game.radioSolved==untouched.radioSolved&&game.lensSolved==untouched.lensSolved&&game.submitted==untouched.submitted&&game.hypothesis==untouched.hypothesis,"presentation changes no clue, mechanism or answer");
+ check(game.discovered==untouched.discovered&&game.powerSolved==untouched.powerSolved&&game.radioSolved==untouched.radioSolved&&game.lensSolved==untouched.lensSolved&&game.submitted==untouched.submitted&&game.answers==untouched.answers,"presentation changes no clue, mechanism or answer");
  std::cout<<checks<<" drama checks passed; storm cadence, power stutter, lens glow, clearing sky and reduced motion.\n";
 }

@@ -170,27 +170,60 @@ void UltimoSinal::DrawInterface() {
         if(display.x>1000.f){const std::string controls=KeyLabel(settings.forward)+KeyLabel(settings.left)+KeyLabel(settings.back)+KeyLabel(settings.right)+"  mover     Shift  correr     Mouse  observar     "+KeyLabel(settings.interact)+" / clique  examinar";
             Letter(d,ImVec2(safe,display.y-bar*.5f-7),12.f,Ink(151,174,178),controls.c_str());}
     } else if(investigation.screen==Screen::Complete) {
-        auto* d=ImGui::GetBackgroundDrawList();d->AddRectFilled(ImVec2(0,0),display,Ink(4,11,16,.86f));
-        const float width=(std::min)(900.f,display.x-32.f),height=(std::min)(760.f,display.y-32.f);
-        ImGui::SetNextWindowPos(ImVec2(display.x*.5f,display.y*.5f),ImGuiCond_Always,ImVec2(.5f,.5f));ImGui::SetNextWindowSize(ImVec2(width,height));
-        ImGui::Begin("##case-closed",nullptr,fixed);
-        Heading("O ÚLTIMO SINAL / FIM DA INVESTIGAÇÃO",investigation.Correct()?"A luz tinha um destinatário":"Uma hipótese precisa de sustentação");
-        ImGui::TextColored(gold,"RELATÓRIO TRANSMITIDO");ImGui::Spacing();Paragraph(ultimo::Explanation);
-        if(ImGui::CollapsingHeader("Seu relatório antes do resultado")){
-            if(investigation.hypothesis>=0&&investigation.hypothesis<int(ultimo::Hypotheses.size()))Paragraph(ultimo::Hypotheses[investigation.hypothesis]);
-            for(int i=0;i<int(ultimo::EntryCount);++i)if(investigation.evidence[i]&&investigation.discovered[i])ImGui::BulletText("%s",ultimo::Entries[i].name);
-            Paragraph(investigation.justification.c_str());
+        auto* d=ImGui::GetBackgroundDrawList();
+        const float margin=(std::clamp)(display.x*.055f,20.f,76.f);
+        const float available=display.x-2.f*margin;
+        if(experience.EndingPlaying()) {
+            const float bar=(std::clamp)(display.y*.075f,28.f,60.f);
+            const float t=experience.endingTime;
+            d->AddRectFilledMultiColor(ImVec2(0,display.y*.40f),display,Ink(4,10,15,0),Ink(4,10,15,0),Ink(4,10,15,.82f),Ink(4,10,15,.94f));
+            d->AddRectFilled(ImVec2(0,0),ImVec2(display.x,bar),Ink(4,9,13));
+            d->AddRectFilled(ImVec2(0,display.y-bar),display,Ink(4,9,13));
+            Letter(d,ImVec2(margin,bar*.5f-7.f),13.f,Ink(219,190,136),"ILHA DAS BRUMAS  /  AO AMANHECER");
+            const bool received=t<3.75f;
+            const char* transmission=received?"Farol, aqui é Brumas. Recebemos seu relatório.":"A guarda costeira confirmou. Interceptamos o Aurora.";
+            const float textWidth=(std::min)(740.f,available);
+            const float textSize=display.x<740.f?21.f:30.f;
+            const auto textBounds=ImGui::GetFont()->CalcTextSizeA(textSize,1e30f,textWidth,transmission);
+            const float textY=display.y-bar-74.f-textBounds.y;
+            Letter(d,ImVec2(margin,textY-25.f),12.f,Ink(222,190,134),"RÁDIO  /  BRUMAS");
+            Letter(d,ImVec2(margin,textY),textSize,Ink(239,234,216),transmission,textWidth);
+            const float progress=Unit(t/ultimo::EndingDuration);
+            const float railY=display.y-bar-12.f;
+            d->AddRectFilled(ImVec2(margin,railY),ImVec2(display.x-margin,railY+2.f),Ink(184,198,195,.20f));
+            d->AddRectFilled(ImVec2(margin,railY),ImVec2(margin+available*progress,railY+2.f),Ink(218,183,123,.83f));
+            ImGui::SetNextWindowPos(ImVec2(display.x-margin,railY-12.f),ImGuiCond_Always,ImVec2(1,1));
+            ImGui::SetNextWindowSize(ImVec2((std::min)(226.f,available),0));
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,ImVec2(0,0));
+            ImGui::Begin("##ending-controls",nullptr,fixed|ImGuiWindowFlags_NoBackground|ImGuiWindowFlags_AlwaysAutoResize);
+            if(ImGui::Button("Ver epílogo  [Enter]",ImVec2(-1,36))||ImGui::IsKeyPressed(ImGuiKey_Enter,false)||ImGui::IsKeyPressed(ImGuiKey_Escape,false))
+                experience.FinishEnding();
+            ImGui::End();
+            ImGui::PopStyleVar();
+        } else {
+            const bool wide=display.x>=970.f;
+            const float width=(std::min)(wide?530.f:610.f,available);
+            d->AddRectFilledMultiColor(ImVec2(0,0),display,Ink(4,10,14,.75f),Ink(4,10,14,.06f),Ink(4,10,14,.26f),Ink(4,10,14,.82f));
+            ImGui::SetNextWindowPos(ImVec2(wide?margin:display.x*.5f,display.y*.5f),ImGuiCond_Always,ImVec2(wide?0.f:.5f,.5f));
+            ImGui::SetNextWindowSizeConstraints(ImVec2(width,0),ImVec2(width,display.y-28.f));
+            ImGui::SetNextWindowBgAlpha(.91f);
+            ImGui::Begin("##case-closed",nullptr,fixed|ImGuiWindowFlags_AlwaysAutoResize);
+            ImGui::TextColored(gold,"CASO ENCERRADO   /   %d DE %d ACERTOS",int(ultimo::ConclusionQuestions.size()),int(ultimo::ConclusionQuestions.size()));
+            ImGui::SetWindowFontScale(1.85f);
+            ImGui::TextWrapped("A luz tinha um destinatário");
+            ImGui::SetWindowFontScale(1.f);
+            ImGui::Spacing();
+            Paragraph(ultimo::ConclusionEpilogue);
+            if(investigation.discovered[9])Paragraph("Antes de partir, você guarda a carta que Augusto nunca enviou. A cadeira voltada para o mar era o lugar que ele reservava para Helena.");
+            ImGui::Separator();
+            if(ImGui::CollapsingHeader("Rever a reconstrução"))Paragraph(ultimo::Explanation);
+            ImGui::TextDisabled("Tempo da investigação: %.0f min.",duration/60.);
+            if(Action("Voltar ao início",true)){Save();investigation.screen=Screen::Title;}
+            if(Action("Consultar registros"))investigation.OpenJournal(Screen::Complete);
+            if(Action("Rever cena final")){experience.BeginEnding();audio.Cue(ultimo::CaseClosedCue);}
+            if(!saveNotice.empty())ImGui::TextWrapped("%s",saveNotice.c_str());
+            ImGui::End();
         }
-        ImGui::Spacing();ImGui::Separator();ImGui::Spacing();
-        if(investigation.discovered[9])Paragraph("Antes de partir, você guarda a carta que Augusto nunca enviou. A cadeira voltada para o mar já não parece um objeto esquecido: é o lugar que ele reservava para Helena.");
-        else Paragraph("O relatório segue para Brumas. A sala fica silenciosa; o farol continua guardando a vida de quem esteve aqui.");
-        ImGui::TextColored(gold,"UMA ÚLTIMA CHAMADA");
-        Paragraph("Na faixa de chamada aparece uma última mensagem: ‘O farol já pode voltar a acender?’ A origem permanece desconhecida.");
-        ImGui::Spacing();ImGui::TextDisabled("Tempo desta sessão: %.0f min. A qualidade da justificativa é avaliada por uma pessoa.",duration/60.);
-        ImGui::Spacing();if(Action("Consultar registros"))investigation.screen=Screen::Journal;
-        if(Action("Voltar ao início",true)){Save();investigation.screen=Screen::Title;}
-        if(Action("Nova investigação"))newGame();
-        if(!saveNotice.empty()){ImGui::Separator();ImGui::TextWrapped("%s",saveNotice.c_str());}ImGui::End();
     } else if(investigation.screen==Screen::Explore) {
         {
             // The aiming dot opens into a ring while an interaction is in reach.
@@ -221,7 +254,10 @@ void UltimoSinal::DrawInterface() {
         float width=(std::max)(190.f,(std::min)(pause?455.f:790.f,display.x-32));
         float height=(std::min)(700.f,(std::max)(200.f,display.y-36));
         ImGui::SetNextWindowPos(ImVec2(pause?display.x*.08f:display.x*.5f,display.y*.5f),ImGuiCond_Always,ImVec2(pause?0.f:.5f,.5f));
-        ImGui::SetNextWindowSize(ImVec2(width,height));ImGui::Begin("##investigation",nullptr,fixed);
+        ImGui::SetNextWindowSize(ImVec2(width,height));
+        const bool questionnaire=investigation.screen==Screen::Conclusion;
+        const auto modalFlags=questionnaire&&display.y>=520.f?fixed|ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse:fixed;
+        ImGui::Begin(questionnaire?"##conclusion-questions":"##investigation",nullptr,modalFlags);
         switch(investigation.screen) {
         case Screen::Reading: {
             int id=(std::clamp)(investigation.readingEntry,0,int(ultimo::EntryCount)-1);
@@ -241,8 +277,13 @@ void UltimoSinal::DrawInterface() {
             if(Action(back.c_str(),true)){inspectedEvidence=-1;investigation.CloseReading();}break;
         }
         case Screen::Journal: {
-            Heading("CADERNO DE CAMPO","O que sabemos até aqui");ImGui::TextColored(gold,"PERGUNTA EM ABERTO");Paragraph(investigation.Question());
-            if(investigation.lensSolved){ImGui::TextColored(gold,"RECONSTITUIÇÃO CONFERIDA");Paragraph("O teste local do comando da lente foi concluído. Use os registros reunidos para sustentar sua interpretação no relatório.");}
+            Heading("CADERNO DE CAMPO","O que sabemos até aqui");
+            if(investigation.journalReturn==Screen::Conclusion&&Action("Voltar às perguntas",true)) {
+                investigation.CloseJournal();
+                break;
+            }
+            if(!investigation.submitted){ImGui::TextColored(gold,"PERGUNTA EM ABERTO");Paragraph(investigation.Question());}
+            if(investigation.lensSolved){ImGui::TextColored(gold,"RECONSTITUIÇÃO CONFERIDA");Paragraph(investigation.submitted?"O teste local do comando da lente está arquivado com os outros registros.":"Compare o ensaio com as evidências para responder às perguntas finais.");}
             else if(investigation.discovered[8])Paragraph("O registro mecânico está arquivado. A bancada da lente permite conferir uma reconstituição com os dados de outros registros.");
             else if(investigation.discovered[7])Paragraph("O relato de Brumas deixa um intervalo por explicar. Procure um registro independente do equipamento.");
             else Paragraph("O caderno guarda o que você examinou. Reabra os registros para comparar detalhes; as perguntas mudam conforme a investigação avança.");
@@ -272,10 +313,10 @@ void UltimoSinal::DrawInterface() {
             if(std::none_of(investigation.discovered.begin(),investigation.discovered.end(),[](bool found){return found;}))Paragraph("Nenhum registro ainda. Examine documentos, instalações e marcas no ambiente; suas descobertas ficam reunidas aqui.");
             ImGui::Spacing();
             if(investigation.submitted&&Action("Consultar desfecho",true))investigation.screen=Screen::Complete;
-            if(!investigation.submitted&&investigation.Ready()&&Action("Preparar relatório",true)){investigation.screen=Screen::Explore;investigation.BeginConclusion();}
+            if(investigation.journalReturn!=Screen::Conclusion&&!investigation.submitted&&investigation.Ready()&&Action("Responder às perguntas finais",true)){investigation.screen=Screen::Explore;investigation.BeginConclusion();}
             if(Action("Pedir uma orientação"))openMenu(Screen::Help);
             std::string close=std::string("Fechar caderno  [")+KeyLabel(settings.journal)+"]";
-            if(Action(close.c_str()))investigation.screen=Screen::Explore;break;
+            if(Action(close.c_str()))investigation.CloseJournal();break;
         }
         case Screen::Pause:
             Heading("INVESTIGAÇÃO EM PAUSA","A ilha espera");
@@ -309,7 +350,7 @@ void UltimoSinal::DrawInterface() {
                 ImGui::Spacing();if(Action("Rearmar proteção",true)){bool restored=investigation.RestorePower();audio.Cue(restored?1:4);Save();}
             }
             if(!investigation.notice.empty())Paragraph(investigation.notice.c_str());
-            if(Action("Consultar caderno"))investigation.screen=Screen::Journal;
+            if(Action("Consultar caderno"))investigation.OpenJournal();
             if(Action("Preciso de uma orientação"))openMenu(Screen::Help);
             if(Action("Afastar-se do quadro"))investigation.screen=Screen::Explore;break;
         }
@@ -332,7 +373,7 @@ void UltimoSinal::DrawInterface() {
             if(Action("Escutar canal",true)){bool tuned=investigation.TuneRadio();audio.Cue(tuned?2:4);Save();}ImGui::EndDisabled();
             if(!investigation.notice.empty())Paragraph(investigation.notice.c_str());
             if(investigation.discovered[7]){ImGui::Separator();ImGui::TextColored(gold,"TRANSCRIÇÃO ARQUIVADA");Paragraph(ultimo::Entries[7].description);}
-            if(Action("Consultar caderno"))investigation.screen=Screen::Journal;
+            if(Action("Consultar caderno"))investigation.OpenJournal();
             if(Action("Preciso de uma orientação"))openMenu(Screen::Help);
             if(Action("Afastar-se do rádio"))investigation.screen=Screen::Explore;break;
         case Screen::LensConsole: {
@@ -380,7 +421,7 @@ void UltimoSinal::DrawInterface() {
             if(investigation.lensSolved){ImGui::BeginDisabled(lensPlaybackTime>=0);if(Action("Reproduzir teste local"))StartLensPlayback();ImGui::EndDisabled();}
             if(!investigation.notice.empty())Paragraph(investigation.notice.c_str());
             if(investigation.discovered[8]&&Action("Consultar registro mecânico")){inspectedEvidence=-1;investigation.readingEntry=8;investigation.readingReturn=Screen::LensConsole;investigation.screen=Screen::Reading;}
-            if(Action("Consultar caderno"))investigation.screen=Screen::Journal;
+            if(Action("Consultar caderno"))investigation.OpenJournal();
             if(Action("Preciso de uma orientação"))openMenu(Screen::Help);
             if(Action("Afastar-se do comando"))investigation.screen=Screen::Explore;break;
         }
@@ -407,26 +448,77 @@ void UltimoSinal::DrawInterface() {
                     if(ImGui::Button(remapping==i?"Pressione uma tecla":KeyLabel(keys[i]).c_str(),ImVec2(-1,32)))remapping=i;ImGui::PopID();}
                 ImGui::EndTable();
             }
-            ImGui::Spacing();Paragraph("Shift: andar mais rápido fora da escada. Clique esquerdo: examinar, como a tecla de interação. Tab / Esc: pausa e retorno. F1: ajuda gradual. F2: opções. Enter: preparar o relatório quando a investigação estiver fundamentada.");
+            ImGui::Spacing();Paragraph("Shift: andar mais rápido fora da escada. Clique esquerdo: examinar, como a tecla de interação. Tab / Esc: pausa e retorno. F1: ajuda gradual. F2: opções. Enter: abrir as perguntas finais quando as evidências estiverem reunidas.");
             ImGui::TextDisabled("F3 abre o painel de demonstração das técnicas gráficas.");
             ImGui::TextDisabled("Teclas em uso ou reservadas não podem ser repetidas.");
             if(Action("Restaurar controles")){settings.forward='W';settings.back='S';settings.left='A';settings.right='D';settings.interact='E';settings.journal='J';remapping=-1;SaveSettings();}
             if(Action("Aplicar e voltar",true)){remapping=-1;SaveSettings();returnMenu();}break;
         }
         case Screen::ConfirmNew:
-            Heading("NOVA INVESTIGAÇÃO","Substituir o progresso salvo?");Paragraph("Uma nova investigação apaga suas descobertas, mecanismos e relatório atuais. As opções de som, imagem e controles serão mantidas.");
+            Heading("NOVA INVESTIGAÇÃO","Substituir o progresso salvo?");Paragraph("Uma nova investigação apaga suas descobertas, mecanismos e respostas atuais. As opções de som, imagem e controles serão mantidas.");
             if(Action("Manter meu progresso",true))returnMenu();
             if(Action("Apagar progresso e começar")){DeleteSave();Start();}break;
-        case Screen::Conclusion:
-            Heading("RELATÓRIO DE CAMPO","O que aconteceu depois da queda?");
-            Paragraph("Escolha a explicação sustentada pelo que encontrou. Relacione pelo menos duas evidências e registre sua justificativa antes de consultar o resultado.");
-            for(int i=0;i<int(ultimo::Hypotheses.size());++i){ImGui::PushID(i);ImGui::RadioButton("##hypothesis",&investigation.hypothesis,i);ImGui::SameLine();ImGui::PushTextWrapPos();ImGui::TextUnformatted(ultimo::Hypotheses[i]);ImGui::PopTextWrapPos();ImGui::PopID();}
-            ImGui::Separator();ImGui::TextColored(gold,"EVIDÊNCIAS QUE APOIAM SUA RESPOSTA");
-            for(int i=0;i<int(ultimo::EntryCount);++i)if(investigation.discovered[i])ImGui::Checkbox(ultimo::Entries[i].name,&investigation.evidence[i]);
-            ImGui::Spacing();ImGui::TextUnformatted("Sua justificativa:");
-            ImGui::InputTextMultiline("##justification",answer.data(),answer.size(),ImVec2(-1,110));investigation.justification=answer.data();
-            ImGui::BeginDisabled(!investigation.CanSubmit());if(Action("Transmitir relatório",true)){if(investigation.Submit()){audio.Cue(0);Save();}}ImGui::EndDisabled();
-            if(Action("Continuar investigando")){Save();investigation.screen=Screen::Explore;}break;
+        case Screen::Conclusion: {
+            Heading("RELATÓRIO DE CAMPO","Conclua a investigação");
+            Paragraph("Marque uma alternativa por pergunta com base nas evidências do caderno.");
+            const char* reviewMessage="Você errou pelo menos uma resposta. Revise as evidências no caderno e tente novamente.";
+            const float available=ImGui::GetContentRegionAvail().x;
+            const bool wide=available>=385.f;
+            const float feedbackHeight=ImGui::GetTextLineHeightWithSpacing()+ImGui::CalcTextSize(reviewMessage,nullptr,false,available).y+10.f;
+            const float footerHeight=(wide?116.f:164.f)+(investigation.conclusionIncorrect?feedbackHeight:0.f)+
+                (saveNotice.empty()?0.f:ImGui::CalcTextSize(saveNotice.c_str(),nullptr,false,available).y+24.f);
+            ImGui::BeginChild("##questions",ImVec2(0,(std::max)(60.f,ImGui::GetContentRegionAvail().y-footerHeight)));
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,ImVec2(10,4));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,ImVec2(9,3));
+            ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,ImVec2(10,0));
+            const bool columns=available>=690.f&&ImGui::BeginTable("##question-columns",2,
+                ImGuiTableFlags_SizingStretchSame|ImGuiTableFlags_NoPadOuterX);
+            if(columns)ImGui::TableNextColumn();
+            bool changed=false;
+            for(std::size_t index=0;index<ultimo::ConclusionQuestions.size();++index) {
+                if(columns&&index==(ultimo::ConclusionQuestions.size()+1)/2)ImGui::TableNextColumn();
+                const auto& question=ultimo::ConclusionQuestions[index];
+                int& selected=investigation.answers[index];
+                ImGui::PushID(int(index));
+                ImGui::PushStyleColor(ImGuiCol_Text,gold);
+                ImGui::TextWrapped("%d. %s",int(index)+1,question.prompt);
+                ImGui::PopStyleColor();
+                for(int option=0;option<int(question.choices.size());++option) {
+                    ImGui::PushID(option);
+                    const bool clicked=ImGui::RadioButton("##answer",selected==option);
+                    ImGui::SameLine();
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextWrapped("%s",question.choices[option]);
+                    if((clicked||ImGui::IsItemClicked())&&selected!=option) {
+                        selected=option;
+                        changed=true;
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::PopID();
+                ImGui::Spacing();
+            }
+            if(columns)ImGui::EndTable();
+            ImGui::PopStyleVar(3);
+            ImGui::EndChild();
+            if(changed){investigation.conclusionIncorrect=false;Save();}
+            ImGui::Separator();
+            if(investigation.conclusionIncorrect) {
+                ImGui::TextColored(ImVec4(.98f,.68f,.49f,1.f),"RESPOSTAS INCORRETAS");
+                ImGui::TextWrapped("%s",reviewMessage);
+            }
+            ImGui::BeginDisabled(!investigation.CanSubmit());
+            if(Action("Conferir respostas",true)) {
+                if(investigation.Submit()){experience.BeginEnding();audio.Cue(ultimo::CaseClosedCue);Save();}
+                else audio.Cue(4);
+            }
+            ImGui::EndDisabled();
+            const float reviewWidth=wide?(available-ImGui::GetStyle().ItemSpacing.x)*.5f:-1.f;
+            if(ImGui::Button("Revisar evidências",ImVec2(reviewWidth,38.f)))investigation.OpenJournal(Screen::Conclusion);
+            if(wide)ImGui::SameLine();
+            if(Action("Continuar investigando"))investigation.screen=Screen::Explore;
+            break;
+        }
         default:break;
         }
         if(!saveNotice.empty()){ImGui::Separator();ImGui::TextWrapped("%s",saveNotice.c_str());}ImGui::End();

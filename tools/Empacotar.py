@@ -59,8 +59,8 @@ Windows x64, driver OpenGL 4.6 e Visual C++ Runtime x64 compativel sao necessari
 Nao ha instalacao automatica. Este pacote foi testado localmente; conferir no PC de apresentacao.
 
 WASD: andar. Mouse: olhar. E: examinar. J: caderno. Tab/Esc: pausa/voltar. F1: ajuda sob pedido. F2: opcoes.
-Enter: iniciar ou apresentar relatorio apos fundamentar a investigacao. Sair: menu de pausa.
-Escolha uma hipotese, duas evidencias e escreva sua justificativa antes do resultado.
+Enter: abrir as perguntas finais quando a reconstrucao estiver disponivel. Sair: menu de pausa.
+Acerte todas as perguntas de multipla escolha para ver o epilogo. Se errar, revise as pistas no caderno e tente novamente.
 Nova investigacao: menu, com confirmacao. Ctrl+0/1/5/6: aulas. Ctrl+2: recriar cena.
 
 Este pacote integra 39 arquivos do cenario produzidos no 3ds Max, mais mesa.3ds reutilizada em quatro mesas; a bancada do radio usa escrivan.3ds.

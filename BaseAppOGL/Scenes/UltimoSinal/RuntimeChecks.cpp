@@ -97,7 +97,7 @@ bool UltimoSinal::VerifyRuntime(){
   check(matrices,"volumes de mobiliario coincidem com as dimensoes previstas");
   check(colliders&&!Blocked({1.7f,1.7f,-3}),"cinco colisoes das mesas importadas preservam acesso a fotografia");
  }else std::cout<<"Mesa: fallback procedural; exportacao autoral ainda ausente, nao certificada."<<std::endl;
- auto persist=[&](const char* label){auto expected=investigation;benchmarkMode=false;Save();bool ok=Load();benchmarkMode=true;check(ok&&investigation.discovered==expected.discovered&&investigation.powerSolved==expected.powerSolved&&investigation.radioSolved==expected.radioSolved&&investigation.submitted==expected.submitted&&investigation.lensSolved==expected.lensSolved&&investigation.lensManual==expected.lensManual&&investigation.lensLong==expected.lensLong,label);};
+ auto persist=[&](const char* label){auto expected=investigation;benchmarkMode=false;Save();bool ok=Load();benchmarkMode=true;check(ok&&investigation.discovered==expected.discovered&&investigation.powerSolved==expected.powerSolved&&investigation.radioSolved==expected.radioSolved&&investigation.submitted==expected.submitted&&investigation.lensSolved==expected.lensSolved&&investigation.lensManual==expected.lensManual&&investigation.lensLong==expected.lensLong&&investigation.answers==expected.answers,label);};
  Start();persist("salvar e continuar no inicio");check(Blocked({0,1.7f,-.5f}),"porta trancada");check(!Visible(interactionPositions[4]),"pista atras da porta oculta");
  FindTarget();check(target!=12,"comando da sala optica nao e acessivel do cais");
  auto travel=[&](glm::vec3 destination){for(int n=0;n<1800&&glm::length(destination-camera.Position)>.025f;++n){auto v=destination-camera.Position;v.y=0;Walk(v,(std::min)(1.f/60.f,glm::length(v)/2.6f));}if(glm::length(destination-camera.Position)>=.035f)std::cout<<"TRAVEL from "<<camera.Position.x<<","<<camera.Position.y<<","<<camera.Position.z<<" to "<<destination.x<<","<<destination.y<<","<<destination.z<<" door="<<investigation.DoorOpen()<<" blocked="<<Blocked(destination)<<std::endl;check(glm::length(destination-camera.Position)<.035f,"percurso com colisoes");};
@@ -155,7 +155,21 @@ bool UltimoSinal::VerifyRuntime(){
  for(int j=35;j>=0;--j){float angle=glm::radians(10.f+j*20.f);travel({1.06f*std::cos(angle),1.9f+j*.20f,-3.f+1.06f*std::sin(angle)});}
  travel({1.7f,1.7f,-2.8f});
  check(std::abs(camera.Position.y-1.7f)<.01f,"descida completa devolve jogador ao arquivo sem queda nem teletransporte");
- check(investigation.BeginConclusion(),"relacoes completas abrem relatorio");investigation.hypothesis=1;investigation.evidence[7]=investigation.evidence[8]=true;investigation.justification="Teste tecnico: tempos e comando manual, sem participante.";check(investigation.Submit()&&investigation.Correct(),"desfecho e resposta");persist("salvar e continuar desfecho");
+ check(investigation.BeginConclusion(),"relacoes completas abrem perguntas finais");
+ check(!investigation.CanSubmit()&&!investigation.Submit(),"perguntas sem resposta nao encerram o caso");
+ investigation.answers=ultimo::CorrectConclusionAnswers;
+ investigation.answers[1]=(investigation.answers[1]+1)%3;
+ check(!investigation.Submit()&&investigation.conclusionIncorrect&&!investigation.submitted
+       &&investigation.screen==ultimo::Screen::Conclusion,"resposta incorreta oferece revisao sem encerrar o caso");
+ investigation.OpenJournal(ultimo::Screen::Conclusion);
+ check(investigation.ReadEntry(7),"transcricao disponivel para revisar resposta errada");investigation.CloseReading();
+ investigation.CloseJournal();
+ check(investigation.screen==ultimo::Screen::Conclusion&&investigation.conclusionIncorrect,"fechar caderno retorna as perguntas mantendo a tentativa");
+ persist("salvar e continuar tentativa de conclusao sem perder as pistas");
+ check(investigation.BeginConclusion(),"perguntas podem ser reabertas depois da revisao e do carregamento");
+ investigation.answers=ultimo::CorrectConclusionAnswers;
+ check(investigation.Submit()&&investigation.AnswersCorrect()&&investigation.screen==ultimo::Screen::Complete,"respostas corretas encerram o caso na segunda tentativa");
+ persist("salvar e continuar desfecho");
  ultimo::Snapshot snap;snap.game=investigation;snap.complete=true;snap.x=camera.Position.x;snap.z=camera.Position.z;ultimo::Snapshot reload;check(ultimo::Decode(ultimo::Encode(snap),reload)&&reload.game.submitted,"desfecho recuperavel");
  wchar_t isolated[32768]{};GetEnvironmentVariableW(L"ULTIMO_TEST_HOME",isolated,32768);auto file=std::filesystem::path(isolated)/L"progress.v3";
  {std::ifstream input(file,std::ios::binary);std::string original((std::istreambuf_iterator<char>(input)),{});input.close();{std::ofstream bad(file,std::ios::binary|std::ios::app);bad<<"corrupted";}bool rejected=!Load();check(rejected&&investigation.submitted,"save corrompido rejeitado sem apagar sessao");{std::ofstream restore(file,std::ios::binary);restore<<original;}}
